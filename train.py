@@ -16,7 +16,7 @@ from transformer_lens import HookedTransformer
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 
-from model import MLP
+from model import MLP, topK_MLP
 from buffer import Buffer
 from utils import get_recons_loss, get_freqs
 from config import Config
@@ -82,9 +82,9 @@ def train(cfg, model, buffer, save_dir):
                 })
 
             if (i+1) % 200000 == 0:
-                torch.save(model.state_dict(), os.path.join(save_dir, f"mlp_{i}.pt"))
+                torch.save(model.state_dict(), os.path.join(save_dir, f"topK_{i}.pt"))
     finally:
-        torch.save(model.state_dict(), os.path.join(save_dir, "mlp_final.pt"))
+        torch.save(model.state_dict(), os.path.join(save_dir, "topK_final.pt"))
 
 
 if __name__ == "__main__":
@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
     # create workdir
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    save_dir = f"mlps/{timestamp}"
+    save_dir = f"topKs/{timestamp}"
     os.makedirs(save_dir, exist_ok=True)
     default_cfg = Config(
         save_dir=save_dir,
@@ -109,6 +109,8 @@ if __name__ == "__main__":
         d_hidden_mult=4*4,
         l1_coeff=0.0002,
         lr=5e-5,
+
+        k=100
     )
 
     default_cfg.to_json("cfg.json")
@@ -116,7 +118,7 @@ if __name__ == "__main__":
     original_model = HookedTransformer.from_pretrained(default_cfg.original_model, device=device)
     print(original_model)
 
-    model = MLP(default_cfg)
+    model = topK_MLP(default_cfg)
     model.to(device)
 
     buffer = Buffer(cfg=default_cfg, model=original_model, device=device)
